@@ -5,7 +5,7 @@
         <li
           v-for="(item,index) in text"
           :key="index"
-          @click="active(index)"
+          @click="active(index,item.name),resetForm('ruleForm')"
           :class="{'swnav-active':current==index}"
         >{{item.name}}</li>
       </ul>
@@ -32,6 +32,16 @@
             maxlength="20"
           ></el-input>
         </el-form-item>
+        <el-form-item prop="checkPass2" v-show="model=='zhuce'">
+          <label>重复密码</label>
+          <el-input
+            type="password"
+            v-model="ruleForm.checkPass2"
+            autocomplete="off"
+            minlength="6"
+            maxlength="20"
+          ></el-input>
+        </el-form-item>
         <el-form-item prop="yzCode">
           <label>验证码</label>
           <el-row :gutter="20">
@@ -44,7 +54,7 @@
           </el-row>
         </el-form-item>
         <el-form-item>
-          <el-button type="danger" @click="submitForm('ruleForm') " class="blcok login-btn">登录</el-button>
+          <el-button type="danger" @click="submitForm('ruleForm') " class="blcok submit-btn">{{text[current].name}}</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -52,7 +62,12 @@
 </template>
 
 <script>
-import { stripscript, testEmail, testPass, testYzCode } from "@/utils/validate.js";
+import {
+  stripscript,
+  testEmail,
+  testPass,
+  testYzCode
+} from "@/utils/validate.js";
 export default {
   data() {
     //验证邮箱
@@ -79,6 +94,21 @@ export default {
         callback();
       }
     };
+    //验证重复密码
+    var checkPass2 = (rule, value, callback) => {
+      if (this.model === "denglu") {
+        callback();
+      }
+      this.ruleForm.checkPass2 = stripscript(value);
+      value = this.ruleForm.checkPass2;
+      if (value === "") {
+        callback(new Error("请再次输入密码"));
+      } else if (value !== this.ruleForm.checkPass) {
+        callback(new Error("密码不一致"));
+      } else {
+        callback();
+      }
+    };
     //验证验证码
     var yzCode = (rule, value, callback) => {
       this.ruleForm.yzCode = stripscript(value);
@@ -93,22 +123,26 @@ export default {
     };
     return {
       text: [{ name: "登录" }, { name: "注册" }],
-      current: -1,
+      current: 0,
+      model: "denglu",
       ruleForm: {
         email: "",
         checkPass: "",
-        yzCode: ""
+        yzCode: "",
+        checkPass2: ""
       },
       rules: {
         email: [{ validator: email, trigger: "blur" }],
         checkPass: [{ validator: checkPass, trigger: "blur" }],
+        checkPass2: [{ validator: checkPass2, trigger: "blur" }],
         yzCode: [{ validator: yzCode, trigger: "blur" }]
       }
     };
   },
   methods: {
-    active(index) {
+    active(index, name) {
       this.current = index;
+      name == "登录" ? (this.model = "denglu") : (this.model = "zhuce");
     },
     submitForm(formName) {
       this.$refs[formName].validate(valid => {
@@ -118,6 +152,9 @@ export default {
           return false;
         }
       });
+    },
+    resetForm(formName) {
+      this.$refs[formName].resetFields();
     }
   }
 };
@@ -163,7 +200,7 @@ export default {
   display: block;
   width: 100%;
 }
-.login-btn {
+.submit-btn {
   margin-top: 12px;
 }
 </style>
