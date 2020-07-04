@@ -6,10 +6,20 @@ function resolve(dir) {
 module.exports = {
     lintOnSave: 'error', // 设置eslint报错时停止代码编译
     productionSourceMap: false, // 不需要生产环境的 source map（减小dist文件大小，加速构建）
+    publicPath: process.env.NODE_ENV === "production" ? "/production-sub-path/" : "/",
     devServer: {
         open: true,  // npm run serve后自动打开页面
         host: '0.0.0.0',  // 匹配本机IP地址(默认是0.0.0.0)
-        port: 8989 // 开发服务器运行端口号
+        port: 8989, // 开发服务器运行端口号
+        proxy: {  //配置跨域
+            '/devapi': {
+                target: 'http://www.web-jshtml.cn/productapi',  //这里后台的地址模拟的;应该填写你们真实的后台接口
+                changOrigin: true,  //允许跨域
+                pathRewrite: {
+                    '^/devapi': ''
+                }
+            },
+        }
     },
     chainWebpack: (config) => {
         // 第1个参数：别名，第2个参数：路径  （设置路径别名）
@@ -18,12 +28,7 @@ module.exports = {
             .set('views', resolve('./src/views'))
             .set('components', resolve('./src/components'))
             .set('assets', resolve('./src/assets'))
+            .set('utils', resolve('./src/utils'))
+            .set('api', resolve('./src/api'))
     },
-    // css: {
-    //     loaderOptions: {
-    //         sass: {
-    //             prependData: `@import "./src/styles/main.scss";`
-    //         }
-    //     }
-    // }
 }

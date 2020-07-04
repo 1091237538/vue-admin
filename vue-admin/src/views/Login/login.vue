@@ -32,7 +32,7 @@
             maxlength="20"
           ></el-input>
         </el-form-item>
-        <el-form-item prop="checkPass2" v-show="model=='zhuce'">
+        <el-form-item prop="checkPass2" v-if="model=='register'">
           <label>重复密码</label>
           <el-input
             type="password"
@@ -49,12 +49,16 @@
               <el-input v-model="ruleForm.yzCode" minlength="6" maxlength="6"></el-input>
             </el-col>
             <el-col :span="10">
-              <el-button class="blcok" type="success">获取验证码</el-button>
+              <el-button class="blcok" type="success" @click="getSms" :disabled="key">{{yzText}}</el-button>
             </el-col>
           </el-row>
         </el-form-item>
         <el-form-item>
-          <el-button type="danger" @click="submitForm('ruleForm') " class="blcok submit-btn">{{text[current].name}}</el-button>
+          <el-button
+            type="danger"
+            @click="submitForm('ruleForm')"
+            class="blcok submit-btn"
+          >{{text[current].name}}</el-button>
         </el-form-item>
       </el-form>
     </div>
@@ -68,6 +72,7 @@ import {
   testPass,
   testYzCode
 } from "@/utils/validate.js";
+import { GetSms, loginIn, registers } from "api/login.js";
 export default {
   data() {
     //验证邮箱
@@ -123,8 +128,11 @@ export default {
     };
     return {
       text: [{ name: "登录" }, { name: "注册" }],
+      yzText: "获取验证码",
+      key: false,
+      yzTime: "",
       current: 0,
-      model: "denglu",
+      model: "login",
       ruleForm: {
         email: "",
         checkPass: "",
@@ -142,12 +150,38 @@ export default {
   methods: {
     active(index, name) {
       this.current = index;
-      name == "登录" ? (this.model = "denglu") : (this.model = "zhuce");
+      clearInterval(this.yzTime);
+      this.key = false;
+      this.yzText = "获取验证码";
+      name == "登录" ? (this.model = "login") : (this.model = "register");
     },
     submitForm(formName) {
       this.$refs[formName].validate(valid => {
         if (valid) {
-          alert("submit!");
+          // 登录
+          if (this.model == "login") {
+            let data = {
+              username: this.ruleForm.email,
+              password: this.ruleForm.checkPass,
+              code: this.ruleForm.yzCode
+            };
+            loginIn(data).then(val => {
+              console.log(val);
+            });
+
+            // 注册
+          } else if (this.model == "register") {
+            let data = {
+              username: this.ruleForm.email,
+              password: this.ruleForm.checkPass,
+              code: this.ruleForm.yzCode
+            };
+            registers(data).then(val => {
+              console.log(val);
+            });
+          } else {
+            return;
+          }
         } else {
           return false;
         }
@@ -155,7 +189,47 @@ export default {
     },
     resetForm(formName) {
       this.$refs[formName].resetFields();
+    },
+    //获取验证码
+    getSms() {
+      if (this.ruleForm.email == "") {
+        this.$message({
+          showClose: true,
+          message: "邮箱不能为空",
+          type: "warning"
+        });
+        return;
+      }
+      let data = {
+        username: this.ruleForm.email,
+        model: this.model
+      };
+      let Time = 60;
+      GetSms(data).then(val => {
+        this.$message({
+          showClose: true,
+          duration: 5000,
+          message: val.message,
+          type: "success"
+        });
+        const Times = () => {
+          this.key = true;
+          if (Time == 0) {
+            this.yzText = "获取验证码";
+            this.key = false;
+            clearInterval(this.yzTime);
+            return;
+          }
+          Time--;
+          this.yzText = `重新获取：${Time}s`;
+        };
+        Times();
+        this.yzTime = setInterval(Times, 1000);
+      });
     }
+  },
+  beforeDestroy() {
+    clearInterval(this.yzTime);
   }
 };
 </script>
@@ -204,8 +278,5 @@ export default {
   margin-top: 12px;
 }
 </style>
-<style >
-.el-form-item__label {
-  color: #fff;
-}
-</style>
+
+
