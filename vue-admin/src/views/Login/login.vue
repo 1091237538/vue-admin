@@ -166,7 +166,20 @@ export default {
               code: this.ruleForm.yzCode
             };
             loginIn(data).then(val => {
-              console.log(val);
+              this.valiForms(val);
+              if (val.resCode === 0) {
+                localStorage.setItem("user", JSON.stringify(val.data));
+                const loading = this.$loading({
+                  lock: true,
+                  text: "登录成功即将跳转页面",
+                  spinner: "el-icon-loading",
+                  background: "rgba(0, 0, 0, 0.7)"
+                });
+                setTimeout(() => {
+                  loading.close();
+                  location.assign("http://www.baidu.com");
+                }, 2000);
+              }
             });
 
             // 注册
@@ -177,7 +190,19 @@ export default {
               code: this.ruleForm.yzCode
             };
             registers(data).then(val => {
-              console.log(val);
+              this.valiForms(val);
+              if (val.resCode === 0) {
+                const loading = this.$loading({
+                  lock: true,
+                  text: "注册成功即将跳转到登录页面",
+                  spinner: "el-icon-loading",
+                  background: "rgba(0, 0, 0, 0.7)"
+                });
+                setTimeout(() => {
+                  loading.close();
+                  location.reload()
+                }, 2000);
+              }
             });
           } else {
             return;
@@ -186,6 +211,34 @@ export default {
           return false;
         }
       });
+    },
+    //判断用户，密码，验证码是否有误
+    valiForms(val) {
+      switch (val.resCode) {
+        case 1004:
+          this.$message({
+            showClose: true,
+            message: "用户名或密码错误",
+            duration: 1000,
+            type: "error"
+          });
+          break;
+        case 1005:
+          this.$message({
+            showClose: true,
+            message: "验证码不匹配",
+            duration: 1000,
+            type: "error"
+          });
+          break;
+        case 200:
+          this.$message({
+            showClose: true,
+            message: "当前邮箱已被注册",
+            duration: 1000,
+            type: "error"
+          });
+      }
     },
     resetForm(formName) {
       this.$refs[formName].resetFields();
@@ -208,7 +261,7 @@ export default {
       GetSms(data).then(val => {
         this.$message({
           showClose: true,
-          duration: 5000,
+          duration: 10000,
           message: val.message,
           type: "success"
         });
