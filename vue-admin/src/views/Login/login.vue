@@ -66,6 +66,7 @@
 </template>
 
 <script>
+import sha1 from "js-sha1";
 import {
   stripscript,
   testEmail,
@@ -148,6 +149,7 @@ export default {
     };
   },
   methods: {
+    //切换模块
     active(index, name) {
       this.current = index;
       clearInterval(this.yzTime);
@@ -155,6 +157,7 @@ export default {
       this.yzText = "获取验证码";
       name == "登录" ? (this.model = "login") : (this.model = "register");
     },
+    // 登录，注册提交
     submitForm(formName) {
       this.$refs[formName].validate(valid => {
         if (valid) {
@@ -162,48 +165,68 @@ export default {
           if (this.model == "login") {
             let data = {
               username: this.ruleForm.email,
-              password: this.ruleForm.checkPass,
+              password: sha1(this.ruleForm.checkPass),
               code: this.ruleForm.yzCode
             };
-            loginIn(data).then(val => {
-              this.valiForms(val);
-              if (val.resCode === 0) {
-                localStorage.setItem("user", JSON.stringify(val.data));
-                const loading = this.$loading({
-                  lock: true,
-                  text: "登录成功即将跳转页面",
-                  spinner: "el-icon-loading",
-                  background: "rgba(0, 0, 0, 0.7)"
+            this.$store
+              .dispatch("login/login", data)
+              .then(val => {
+                this.valiForms(val);
+                if (val.resCode === 0) {
+                  const loading = this.$loading({
+                    lock: true,
+                    text: "登录成功即将跳转页面",
+                    spinner: "el-icon-loading",
+                    background: "rgba(0, 0, 0, 0.7)"
+                  });
+                  setTimeout(() => {
+                    loading.close();
+                    this.$router.push({
+                      path: "/Console"
+                    });
+                  }, 2000);
+                }
+              })
+              .catch(val => {
+                this.$message({
+                  showClose: true,
+                  message: "登录超时",
+                  duration: 1000,
+                  type: "error"
                 });
-                setTimeout(() => {
-                  loading.close();
-                  location.assign("http://www.baidu.com");
-                }, 2000);
-              }
-            });
+              });
 
             // 注册
           } else if (this.model == "register") {
             let data = {
               username: this.ruleForm.email,
-              password: this.ruleForm.checkPass,
+              password: sha1(this.ruleForm.checkPass),
               code: this.ruleForm.yzCode
             };
-            registers(data).then(val => {
-              this.valiForms(val);
-              if (val.resCode === 0) {
-                const loading = this.$loading({
-                  lock: true,
-                  text: "注册成功即将跳转到登录页面",
-                  spinner: "el-icon-loading",
-                  background: "rgba(0, 0, 0, 0.7)"
+            registers(data)
+              .then(val => {
+                this.valiForms(val);
+                if (val.resCode === 0) {
+                  const loading = this.$loading({
+                    lock: true,
+                    text: "注册成功即将跳转到登录页面",
+                    spinner: "el-icon-loading",
+                    background: "rgba(0, 0, 0, 0.7)"
+                  });
+                  setTimeout(() => {
+                    loading.close();
+                    location.reload();
+                  }, 2000);
+                }
+              })
+              .catch(val => {
+                this.$message({
+                  showClose: true,
+                  message: "网络请求超时",
+                  duration: 1000,
+                  type: "error"
                 });
-                setTimeout(() => {
-                  loading.close();
-                  location.reload()
-                }, 2000);
-              }
-            });
+              });
           } else {
             return;
           }
@@ -240,6 +263,7 @@ export default {
           });
       }
     },
+    //清除表单数据
     resetForm(formName) {
       this.$refs[formName].resetFields();
     },
@@ -258,37 +282,48 @@ export default {
         model: this.model
       };
       let Time = 60;
-      GetSms(data).then(val => {
-        this.$message({
-          showClose: true,
-          duration: 10000,
-          message: val.message,
-          type: "success"
+      GetSms(data)
+        .then(val => {
+          this.$message({
+            showClose: true,
+            duration: 10000,
+            message: val.message,
+            type: "success"
+          });
+          const Times = () => {
+            this.key = true;
+            if (Time == 0) {
+              this.yzText = "获取验证码";
+              this.key = false;
+              clearInterval(this.yzTime);
+              return;
+            }
+            Time--;
+            this.yzText = `重新获取：${Time}s`;
+          };
+          Times();
+          this.yzTime = setInterval(Times, 1000);
+        })
+        .catch(val => {
+          this.$message({
+            showClose: true,
+            message: "网络请求超时",
+            duration: 1000,
+            type: "error"
+          });
         });
-        const Times = () => {
-          this.key = true;
-          if (Time == 0) {
-            this.yzText = "获取验证码";
-            this.key = false;
-            clearInterval(this.yzTime);
-            return;
-          }
-          Time--;
-          this.yzText = `重新获取：${Time}s`;
-        };
-        Times();
-        this.yzTime = setInterval(Times, 1000);
-      });
     }
   },
   beforeDestroy() {
-    clearInterval(this.yzTime);
+    this.$message.closeAll(); //跳转路由清除所有message
+    clearInterval(this.yzTime); //清除定时器
   }
 };
 </script>
 
 <style lang="scss" scoped>
 #login {
+  width: 100vw;
   height: 100vh;
   background: #344a5f;
   display: flex;
