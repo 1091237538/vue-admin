@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { getToken, getUserName } from 'utils/app.js'
 
 //创建axios实例
 const BASEURL = process.env.NODE_ENV === "production" ? " " : "/devapi";  // 判断是生产环境的地址还是开发环境的地址
@@ -9,11 +10,13 @@ const instance = axios.create({
 
 
 instance.interceptors.request.use(data => {
+    data.headers['Tokey'] = getToken()
+    data.headers['UserName'] = getUserName()
     return data
 })
 
 instance.interceptors.response.use(data => {
-   return data.data
+    return data.data
 })
 
 
