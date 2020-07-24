@@ -1,6 +1,6 @@
 <template>
   <div id="console_index" :class="{'close':menuStates}">
-    <el-container>
+    <el-container class="containerBox">
       <el-aside width="250px">
         <LayoutNav></LayoutNav>
       </el-aside>
@@ -39,6 +39,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.containerBox{
+  height: 968px;
+}
 ::v-deep .el-header {
   padding: 0;
   z-index: 999;

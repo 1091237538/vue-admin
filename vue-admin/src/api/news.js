@@ -41,4 +41,13 @@ const AddFirstCategory = (data) => {
     }))
 }
 
-export { AddFirstCategory, getCategory,deleteCategory,modifyCategory }
+//添加二级分类
+const AddSecondCategory = (data) => {
+    return Promise.resolve(instance.request({
+        method: "post",
+        url: '/news/addChildrenCategory/',
+        data
+    }))
+}
+
+export { AddFirstCategory, getCategory, deleteCategory, modifyCategory,AddSecondCategory }

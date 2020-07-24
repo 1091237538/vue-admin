@@ -1,6 +1,6 @@
 <template>
   <div id="infoCategory">
-    <el-button type="danger" @click="addFirstCategory">添加一级分类</el-button>
+    <el-button type="danger" @click="swFirstCategory">添加一级分类</el-button>
     <el-divider></el-divider>
     <div>
       <el-row :gutter="30">
@@ -12,7 +12,7 @@
                 {{fristItem.category_name}}
                 <div class="btns">
                   <el-button type="danger" round @click="edit(fristItem)">编辑</el-button>
-                  <el-button type="success" round @click="addSecondCategory">添加子集</el-button>
+                  <el-button type="success" round @click="swSecondCategory(fristItem)">添加子集</el-button>
                   <el-button round @click="deleteItem(fristItem.id)">删除</el-button>
                 </div>
               </h4>
@@ -29,13 +29,13 @@
           </div>
         </el-col>
         <el-col :span="16">
-          <h4 class="menu-title">{{frist_menu_name}}</h4>
+          <h4 class="menu-title">{{menu_name}}</h4>
           <el-form ref="form" :model="form">
             <el-form-item label="一级分类名称：" v-if="first_key">
               <el-input v-model.trim="form.first_name" :disabled="first_disabled"></el-input>
             </el-form-item>
             <el-form-item label="二级分类名称：" v-if="second_key">
-              <el-input v-model.trim="form.first_name" :disabled="second_disabled"></el-input>
+              <el-input v-model.trim="form.second_name" :disabled="second_disabled"></el-input>
             </el-form-item>
             <el-button type="primary" @click="submit_type" :disabled="add_disabled">确定</el-button>
           </el-form>
@@ -51,8 +51,11 @@ import {
   getCategory,
   deleteCategory,
   modifyCategory,
+  AddSecondCategory,
 } from "api/news.js";
+
 import { stripscript } from "utils/validate.js";
+
 export default {
   data() {
     return {
@@ -66,16 +69,36 @@ export default {
       first_disabled: true,
       second_disabled: true,
       add_disabled: true,
-      frist_menu_name: "一级分类名称",
+      menu_name: "一级分类名称",
       btn_type: "",
       edit_FristData: "",
+      second_Data: "",
     };
   },
   methods: {
+    //判断是添加还是编辑
+    submit_type() {
+      if (this.form.first_name === "" && this.form.second_name === "") {
+        this.$message({
+          message: "菜单名称不能为空",
+          type: "warning",
+        });
+        return;
+      }
+      if (this.btn_type === "添加") {
+        this.second_Data["categoryName"] = this.form.second_name;
+        this.menu_name == "一级分类名称"
+          ? this.addCategoryFn()
+          : this.addSecondCategory(this.second_Data);
+      } else if (this.btn_type === "编辑") {
+        this.edit_FristData["categoryName"] = this.form.first_name;
+        this.editFristCategory(this.edit_FristData);
+      }
+    },
     //切换到一级分类添加模块
-    addFirstCategory() {
+    swFirstCategory() {
       this.btn_type = "添加";
-      this.frist_menu_name = "一级分类名称";
+      this.menu_name = "一级分类名称";
       this.form.first_name = "";
       this.first_key = true;
       this.second_key = false;
@@ -83,16 +106,20 @@ export default {
       this.add_disabled = false;
     },
     //切换到二级分类添加模块
-    addSecondCategory() {
+    swSecondCategory(data) {
       this.btn_type = "添加";
-      this.frist_menu_name = "二级分类名称";
+      this.menu_name = "二级分类名称";
       this.form.second_name = "";
       this.first_key = false;
       this.second_key = true;
       this.second_disabled = false;
       this.add_disabled = false;
+      let newData = {
+        parentId: data.id,
+      };
+      this.second_Data = newData;
     },
-    //添加分类
+    //添加一级分类
     addCategoryFn() {
       let data = {
         categoryName: stripscript(this.form.first_name),
@@ -103,7 +130,7 @@ export default {
             message: "添加成功！！",
             type: "success",
           });
-          this.form.first_name = "";
+          this.reductionFn();
           this.addNewCategory(val.data);
         } else if (val.resCode === 1040) {
           this.$message({
@@ -113,25 +140,29 @@ export default {
         }
       });
     },
-    //判断是添加还是编辑
-    submit_type() {
-      if (this.form.first_name === "") {
-        this.$message({
-          message: "菜单名称不能为空",
-          type: "warning",
-        });
-        return;
-      }
-      if (this.btn_type === "添加") {
-        this.addCategoryFn();
-      } else if (this.btn_type === "编辑") {
-        this.edit_FristData["categoryName"] = this.form.first_name;
-        this.editFristCategory(this.edit_FristData);
-      }
-    },
-    //添加分类后,更新分类显示
+    //添加一级分类后,更新分类显示
     addNewCategory(data) {
       this.categorys.push(data);
+    },
+    //添加二级分类
+    addSecondCategory(data) {
+      AddSecondCategory(data).then((val) => {
+        console.log(val);
+      });
+    },
+    //删除分类
+    deleteFn(id) {
+      let data = {
+        categoryId: id,
+      };
+      deleteCategory(data).then((val) => {
+        this.$message({
+          message: "删除成功",
+          type: "success",
+        });
+        this.deleteNewCategory(id);
+        this.reductionFn();
+      });
     },
     //删除分类后,更新分类显示
     deleteNewCategory(data) {
@@ -157,24 +188,11 @@ export default {
           this.$message("取消删除");
         });
     },
-    //删除分类
-    deleteFn(id) {
-      let data = {
-        categoryId: id,
-      };
-      deleteCategory(data).then((val) => {
-        this.$message({
-          message: "删除成功",
-          type: "success",
-        });
-        this.deleteNewCategory(id);
-      });
-    },
     //编辑分类
     edit(val) {
-      this.addFirstCategory();
+      this.swFirstCategory();
       this.form.first_name = val.category_name;
-      this.frist_menu_name = "一级菜单编辑";
+      this.menu_name = "一级分类编辑";
       this.btn_type = "编辑";
       this.edit_FristData = {
         id: val.id,
@@ -188,8 +206,8 @@ export default {
             message: "修改成功！！",
             type: "success",
           });
-          this.form.first_name = "";
-          this.getCategoryFn()
+          this.getCategoryFn();
+          this.reductionFn();
         })
         .catch((val) => {
           this.$message({
@@ -198,20 +216,25 @@ export default {
           });
         });
     },
-    //获取分类信息
-    getCategoryFn() {
-      return getCategory().then((val) => {
-        if (val.resCode === 0) {
-          let newArr = val.data.data.sort((a, b) => {
-            return a.id - b.id;
-          });
-          this.categorys = newArr;
-        }
-      });
+
+    //还原状态
+    reductionFn() {
+      this.form.first_name = "";
+      this.form.second_name = "";
+      this.btn_type = "";
+      this.edit_FristData = "";
+      this.second_Data = "";
+      this.first_key = true;
+      this.second_key = true;
+      this.first_disabled = true;
+      this.second_disabled = true;
+      this.add_disabled = true;
+      this.menu_name = "一级分类名称";
     },
   },
   mounted() {
-    this.getCategoryFn();
+    this.$store.dispatch("info/getCategoryFn");
+    this.categorys = JSON.parse(localStorage.getItem("categorys"));
   },
 };
 </script>

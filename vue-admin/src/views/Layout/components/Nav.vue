@@ -91,7 +91,7 @@ export default {
 
 <style lang="scss" scoped>
 #console_nav {
-  height: 100vh;
+  height: 100%;
   background: #344a5f;
 }
 ::v-deep .el-menu {

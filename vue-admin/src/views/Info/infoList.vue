@@ -4,18 +4,23 @@
       <el-row :gutter="20" class="search">
         <el-col :span="3">
           <el-form-item label="类别：">
-            <el-select v-model="category" class="select-item" placeholder="请选择">
-              <el-option label="国际信息" value="国际信息"></el-option>
-              <el-option label="国内信息" value="国内信息"></el-option>
-              <el-option label="社会信息" value="社会信息"></el-option>
+            <el-select class="select-item" placeholder="请选择" v-model="category">
+              <el-option
+                :label="categoryItem.category_name"
+                :value="categoryItem.id"
+                v-for="categoryItem in categorys"
+                :key="categoryItem.id"
+              ></el-option>
             </el-select>
           </el-form-item>
         </el-col>
-        <el-col :span="7">
+        <el-col :span="8">
           <el-form-item label="日期：">
             <el-date-picker
-              v-model="value1"
-              type="daterange"
+              v-model="dataTime"
+              type="datetimerange"
+              format="yyyy 年 MM 月 dd 日"
+              value-format="yyyy-MM-dd HH:mm:ss"
               range-separator="至"
               start-placeholder="开始日期"
               end-placeholder="结束日期"
@@ -30,28 +35,35 @@
             </el-select>
           </el-form-item>
           <el-input v-model="seachInput" placeholder="请输入内容" class="searchInput"></el-input>
-          <el-button type="danger" class="searchBtn">搜索</el-button>
+          <el-button type="danger" class="searchBtn" @click="search">搜索</el-button>
         </el-col>
-        <el-col :span="6">
+        <el-col :span="5">
           <el-button type="danger" class="addBtn" @click="addInfo">添加</el-button>
         </el-col>
       </el-row>
     </el-form>
     <el-table
       :data="tableData"
+      v-loading="loading"
       border
       style="width: 100%"
       @selection-change="handleSelectionChange"
     >
       <el-table-column type="selection" width="55"></el-table-column>
-      <el-table-column prop="date" label="标题" width="400" align="center"></el-table-column>
-      <el-table-column prop="name" label="类别" width="180" align="center"></el-table-column>
-      <el-table-column prop="address" label="日期" align="center"></el-table-column>
+      <el-table-column prop="title" label="标题" width="400" align="center"></el-table-column>
+      <el-table-column
+        prop="categoryId"
+        label="类别"
+        width="180"
+        align="center"
+        :formatter="toCategory"
+      ></el-table-column>
+      <el-table-column prop="createDate" label="日期" align="center" :formatter="toData"></el-table-column>
       <el-table-column prop="address" label="管理人" align="center"></el-table-column>
       <el-table-column label="操作" align="center">
         <template slot-scope="scope">
-          <el-button size="mini" type="danger" @click="deleteItem">删除</el-button>
-          <el-button size="mini" @click="dialogTableVisible.keys=true" type="success">编辑</el-button>
+          <el-button size="mini" type="danger" @click="deleteItem(scope.row)">删除</el-button>
+          <el-button size="mini" type="success">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -65,21 +77,23 @@
           class="paging"
           @size-change="handleSizeChange"
           @current-change="handleCurrentChange"
-          :page-sizes="[100, 200, 300, 400]"
+          :page-sizes="[10, 20, 30, 40]"
           :page-size="100"
           layout="total, sizes, prev, pager, next, jumper"
-          :total="400"
+          :total="pages.total"
         ></el-pagination>
       </el-col>
     </el-row>
 
     <!-- 添加信息 -->
-    <add-info :dialog_key="dialogTableVisible"></add-info>
+    <add-info :dialog_key="dialogTableVisible" :getList="getList"></add-info>
   </div>
 </template>
 
 <script>
 import addInfo from "views/Info/dialog/addInfo.vue";
+import { getInfoList, deleteInfo } from "api/infoList.js";
+import { timestampToTime } from "utils/common.js";
 export default {
   components: {
     addInfo,
@@ -87,59 +101,163 @@ export default {
   data() {
     return {
       category: "",
-      value1: "",
+      categorys: "",
+      dataTime: "",
       key: "ID",
       seachInput: "",
+      total: 1,
+      pages: {
+        total: 1,
+        pageNumber: 1,
+        pageSize: 10,
+      },
+      selectInfo: [],
       dialogTableVisible: {
         keys: false,
       },
-      tableData: [
-        {
-          date: "2016-05-02",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄",
-        },
-        {
-          date: "2016-05-04",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1517 弄",
-        },
-        {
-          date: "2016-05-01",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1519 弄",
-        },
-        {
-          date: "2016-05-03",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1516 弄",
-        },
-      ],
+      tableData: [],
+      loading: true,
     };
   },
   methods: {
+    //搜索状态还原
+    reductionSearchFn() {
+      (this.category = ""), (this.dataTime = ""), (this.seachInput = "");
+    },
+    //搜索
+    search() {
+      this.getList();
+      this.reductionSearchFn()
+    },
+    //获取搜索数据
+    getSearchData() {
+      let requestData = {};
+      //获取信息id
+      if (this.category) {
+        requestData.categoryId = this.category;
+      }
+      //获取日期
+      if (this.dataTime.length > 0) {
+        requestData.startTiem = this.dataTime[0];
+        requestData.endTiem = this.dataTime[1];
+      }
+      requestData.title = this.seachInput;
+      requestData.pageNumber = this.pages.pageNumber;
+      requestData.pageSize = this.pages.pageSize;
+      return requestData;
+    },
+    //格式化时间
+    toData(row) {
+      return timestampToTime(row.createDate);
+    },
+
+    //匹配类型
+    toCategory(row) {
+      let categoryName = "";
+      this.categorys.filter((val, index) => {
+        if (val.id == row.categoryId) {
+          categoryName = val.category_name;
+        }
+      });
+      return categoryName;
+    },
+    //存储多选信息
+    handleSelectionChange(val) {
+      this.selectInfo = val;
+    },
+    //每页条数
     handleSizeChange(val) {
-      console.log(val);
+      this.loading = true;
+      this.pages.pageSize = val;
+      this.getList();
     },
+    //当前页
     handleCurrentChange(val) {
-      console.log(val);
+      this.loading = true;
+      this.pages.pageNumber = val;
+      this.getList();
     },
+    //打开dialog
     addInfo() {
       this.dialogTableVisible.keys = true;
     },
-    handleSelectionChange() {},
-    deleteItem() {
+    //删除提示信息
+    deleteItem(currentData) {
       this.confirm({
         content: "是否删除当前信息",
-         fn:this.remove
+      })
+        .then((val) => {
+          if (val === "confirm") {
+            this.loading = true;
+            this.selectInfo = currentData;
+            this.deleteFn();
+          }
+        })
+        .catch((val) => {
+          this.$message({
+            message: "取消删除",
+          });
+        });
+    },
+    //删除接口
+    deleteFn() {
+      let infoId = {
+        id: [],
+      };
+      if (this.selectInfo instanceof Array) {
+        //判断是批量删除还是单个删除,如果是批量删除则进行遍历,如果是单个删除直接添加
+        infoId.id = this.selectInfo.map((val) => {
+          return val.id;
+        });
+      } else {
+        infoId.id.push(this.selectInfo.id);
+      }
+      deleteInfo(infoId).then((response) => {
+        if (response.resCode === 0) {
+          this.$message({
+            type: "success",
+            message: response.message,
+          });
+          this.getList();
+        }
       });
     },
+    //删除选中的信息
     deleteAll() {
-      this.confirm({
-        content: "是否删除选中的信息",
-        fn:this.remove
-      });
+      this.confirm({ content: "是否删除选中的信息" })
+        .then((val) => {
+          if (val === "confirm") {
+            if (this.selectInfo == "") {
+              return;
+            }
+            this.loading = true;
+            this.deleteFn();
+          }
+        })
+        .catch((val) => {
+          this.$message({
+            message: "取消删除",
+          });
+        });
     },
+    //获取信息列表
+    getList() {
+      let listData = this.getSearchData();
+      getInfoList(listData)
+        .then((val) => {
+          this.pages.total = val.data.total;
+          this.tableData = val.data.data;
+          this.loading = false;
+        })
+        .catch((val) => {
+          this.loading = false;
+        });
+    },
+  },
+  mounted() {
+    this.$store.dispatch("info/getCategoryFn");
+    this.categorys = JSON.parse(localStorage.getItem("categorys"));
+    this.getList();
   },
 };
 </script>
