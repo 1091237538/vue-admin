@@ -10,7 +10,15 @@ const getCategory = (data) => {
     }))
 }
 
+//获取所有信息列表(包括子集列表)
 
+const getAllCategory = (data) => {
+    return Promise.resolve(instance.request({
+        method: "post",
+        url: "/news/getCategoryAll/",
+        data
+    }))
+}
 //删除分类
 const deleteCategory = (data) => {
     return Promise.resolve(instance.request({
@@ -50,4 +58,4 @@ const AddSecondCategory = (data) => {
     }))
 }
 
-export { AddFirstCategory, getCategory, deleteCategory, modifyCategory,AddSecondCategory }
+export { AddFirstCategory, getCategory, deleteCategory, modifyCategory, AddSecondCategory, getAllCategory }

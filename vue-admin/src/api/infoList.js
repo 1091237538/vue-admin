@@ -29,4 +29,13 @@ const deleteInfo = (data) => {
 }
 
 
-export { getInfoList, addInfo, deleteInfo }
+//修改信息 
+const editInfo = (data) => {
+    return Promise.resolve(instance.request({
+        method: 'post',
+        url: '/news/editInfo/',
+        data
+    }))
+}
+
+export { getInfoList, addInfo, deleteInfo, editInfo, }

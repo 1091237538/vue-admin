@@ -1,4 +1,4 @@
-import { getCategory } from "api/news.js";
+import { getAllCategory } from "api/news.js";
 const state = {
     categorys: []
 }
@@ -12,9 +12,9 @@ const mutations = {
 const actions = {
     //获取分类信息
     getCategoryFn({ commit }) {
-        getCategory().then((val) => {
+        getAllCategory().then((val) => {
             if (val.resCode === 0) {
-                let newArr = val.data.data.sort((a, b) => { 
+                let newArr = val.data.sort((a, b) => { 
                     return a.id - b.id;
                 });
                 commit('setCategorys', newArr)

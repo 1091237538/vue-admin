@@ -20,8 +20,8 @@
                 <li v-for="childrenItem in  fristItem.children" :key="childrenItem.id">
                   {{childrenItem.category_name}}
                   <div class="btns">
-                    <el-button type="danger" round>编辑</el-button>
-                    <el-button round>删除</el-button>
+                    <el-button type="danger" round @click="edit2(childrenItem)">编辑</el-button>
+                    <el-button round @click="deleteItem(childrenItem.id)">删除</el-button>
                   </div>
                 </li>
               </ul>
@@ -48,13 +48,11 @@
 <script>
 import {
   AddFirstCategory,
-  getCategory,
   deleteCategory,
   modifyCategory,
   AddSecondCategory,
+  getAllCategory,
 } from "api/news.js";
-
-import { stripscript } from "utils/validate.js";
 
 export default {
   data() {
@@ -71,8 +69,9 @@ export default {
       add_disabled: true,
       menu_name: "一级分类名称",
       btn_type: "",
-      edit_FristData: "",
-      second_Data: "",
+      edit_Data: {},
+      second_Data: {},
+      categoryType: "",
     };
   },
   methods: {
@@ -87,12 +86,14 @@ export default {
       }
       if (this.btn_type === "添加") {
         this.second_Data["categoryName"] = this.form.second_name;
-        this.menu_name == "一级分类名称"
+        this.menu_name === "一级分类名称"
           ? this.addCategoryFn()
           : this.addSecondCategory(this.second_Data);
       } else if (this.btn_type === "编辑") {
-        this.edit_FristData["categoryName"] = this.form.first_name;
-        this.editFristCategory(this.edit_FristData);
+        this.menu_name == "一级分类编辑"
+          ? (this.edit_Data["categoryName"] = this.form.first_name)
+          : (this.edit_Data["categoryName"] = this.form.second_name);
+        this.editFristCategory(this.edit_Data);
       }
     },
     //切换到一级分类添加模块
@@ -112,17 +113,22 @@ export default {
       this.form.second_name = "";
       this.first_key = false;
       this.second_key = true;
+      this.first_disabled = true;
       this.second_disabled = false;
       this.add_disabled = false;
+      if (!data) {
+        return false;
+      }
       let newData = {
         parentId: data.id,
       };
+      this.form.first_name = data.category_name;
       this.second_Data = newData;
     },
     //添加一级分类
     addCategoryFn() {
       let data = {
-        categoryName: stripscript(this.form.first_name),
+        categoryName: this.form.first_name,
       };
       AddFirstCategory(data).then((val) => {
         if (val.resCode === 0) {
@@ -147,9 +153,32 @@ export default {
     //添加二级分类
     addSecondCategory(data) {
       AddSecondCategory(data).then((val) => {
-        console.log(val);
+        if (val.resCode === 0) {
+          this.$message({
+            type: "success",
+            message: val.message,
+          });
+          this.reductionFn();
+          this.getSecondCategoryFn(data.parentId, val.data);
+        } else {
+          this.$message({
+            type: "error",
+            message: val.message,
+          });
+          this.reductionFn();
+        }
       });
     },
+
+    //添加二级分类后更新列表
+    getSecondCategoryFn(id, data) {
+      this.categorys.filter((val, index) => {
+        if (val.id === id) {
+          this.categorys[index].children.push(data);
+        }
+      });
+    },
+
     //删除分类
     deleteFn(id) {
       let data = {
@@ -167,12 +196,20 @@ export default {
     //删除分类后,更新分类显示
     deleteNewCategory(data) {
       let currentIndex = "";
-      this.categorys.filter((val, index) => {
-        if (data === val.id) {
-          currentIndex = index;
+      this.categorys.filter((parentVal, parentIndex) => {                                  //判断是否有子集分类
+        if (parentVal["children"]) {   
+          parentVal["children"].filter((childrenVal, childrenIndex) => {
+            if (data === childrenVal.id) {
+              this.categorys[parentIndex].children.splice(childrenIndex,1)
+            }
+          });
+        } else {
+          if (data === parentVal.id) {
+            currentIndex = parentIndex;
+            this.categorys.splice(currentIndex, 1);
+          }
         }
       });
-      this.categorys.splice(currentIndex, 1);
     },
     //删除提示
     deleteItem(id) {
@@ -194,27 +231,36 @@ export default {
       this.form.first_name = val.category_name;
       this.menu_name = "一级分类编辑";
       this.btn_type = "编辑";
-      this.edit_FristData = {
+      this.edit_Data = {
         id: val.id,
       };
     },
-    //编辑一级分类信息
+    edit2(val) {
+      this.swSecondCategory();
+      this.form.second_name = val.category_name;
+      this.menu_name = "二级分类编辑";
+      this.btn_type = "编辑";
+      this.edit_Data = {
+        id: val.id,
+      };
+    },
+    //编辑分类信息
     editFristCategory(data) {
-      modifyCategory(data)
-        .then((val) => {
+      modifyCategory(data).then((val) => {
+        if (val.resCode === 0) {
           this.$message({
-            message: "修改成功！！",
+            message: val.message,
             type: "success",
           });
-          this.getCategoryFn();
           this.reductionFn();
-        })
-        .catch((val) => {
+          this.getAllFn();
+        } else {
           this.$message({
-            message: "修改失败",
+            message: val.message,
             type: "error",
           });
-        });
+        }
+      });
     },
 
     //还原状态
@@ -222,7 +268,7 @@ export default {
       this.form.first_name = "";
       this.form.second_name = "";
       this.btn_type = "";
-      this.edit_FristData = "";
+      this.edit_Data = "";
       this.second_Data = "";
       this.first_key = true;
       this.second_key = true;
@@ -230,6 +276,15 @@ export default {
       this.second_disabled = true;
       this.add_disabled = true;
       this.menu_name = "一级分类名称";
+    },
+    //分类页获取所有分类
+    getAllFn() {
+      getAllCategory().then((val) => {
+        let newArr = val.data.sort((a, b) => {
+          return a.id - b.id;
+        });
+        this.categorys = newArr;
+      });
     },
   },
   mounted() {

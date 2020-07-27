@@ -59,11 +59,11 @@
         :formatter="toCategory"
       ></el-table-column>
       <el-table-column prop="createDate" label="日期" align="center" :formatter="toData"></el-table-column>
-      <el-table-column prop="address" label="管理人" align="center"></el-table-column>
+      <el-table-column prop="id" label="ID" align="center"></el-table-column>
       <el-table-column label="操作" align="center">
         <template slot-scope="scope">
           <el-button size="mini" type="danger" @click="deleteItem(scope.row)">删除</el-button>
-          <el-button size="mini" type="success">编辑</el-button>
+          <el-button size="mini" type="success" @click="edit(scope.row)">编辑</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -87,16 +87,19 @@
 
     <!-- 添加信息 -->
     <add-info :dialog_key="dialogTableVisible" :getList="getList"></add-info>
+    <edit :edit_key="dialogTableVisible" :currentInfo="editInfo" :getList="getList"></edit>
   </div>
 </template>
 
 <script>
 import addInfo from "views/Info/dialog/addInfo.vue";
+import edit from "views/Info/dialog/edit.vue";
 import { getInfoList, deleteInfo } from "api/infoList.js";
 import { timestampToTime } from "utils/common.js";
 export default {
   components: {
     addInfo,
+    edit,
   },
   data() {
     return {
@@ -113,13 +116,20 @@ export default {
       },
       selectInfo: [],
       dialogTableVisible: {
-        keys: false,
+        keys1: false,
+        keys2: false,
       },
+      editInfo: {},
       tableData: [],
       loading: true,
     };
   },
   methods: {
+    //修改数据
+    edit(val) {
+      this.dialogTableVisible.keys2 = true;
+      this.editInfo = val;
+    },
     //搜索状态还原
     reductionSearchFn() {
       (this.category = ""), (this.dataTime = ""), (this.seachInput = "");
@@ -127,7 +137,7 @@ export default {
     //搜索
     search() {
       this.getList();
-      this.reductionSearchFn()
+      this.reductionSearchFn();
     },
     //获取搜索数据
     getSearchData() {
@@ -141,7 +151,9 @@ export default {
         requestData.startTiem = this.dataTime[0];
         requestData.endTiem = this.dataTime[1];
       }
-      requestData.title = this.seachInput;
+      this.key === "ID"
+        ? (requestData.id = this.seachInput)
+        : (requestData.title = this.seachInput);
       requestData.pageNumber = this.pages.pageNumber;
       requestData.pageSize = this.pages.pageSize;
       return requestData;
@@ -179,7 +191,7 @@ export default {
     },
     //打开dialog
     addInfo() {
-      this.dialogTableVisible.keys = true;
+      this.dialogTableVisible.keys1 = true;
     },
     //删除提示信息
     deleteItem(currentData) {
@@ -228,7 +240,7 @@ export default {
         .then((val) => {
           if (val === "confirm") {
             if (this.selectInfo == "") {
-              return;
+              return false;
             }
             this.loading = true;
             this.deleteFn();

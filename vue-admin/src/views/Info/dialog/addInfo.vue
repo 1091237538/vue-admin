@@ -2,11 +2,10 @@
   <div>
     <el-dialog
       title="新增"
-      :visible.sync="dialog_key.keys"
+      :visible.sync="dialog_key.keys1"
       width="30%"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
-      @close="cls"
       center
     >
       <el-form :model="form">
@@ -35,7 +34,7 @@
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="dialog_key.keys = false" size="medium" style="width:120px">取 消</el-button>
+        <el-button @click="dialog_key.keys1 = false" size="medium" style="width:120px">取 消</el-button>
         <el-button type="danger" @click="addInfoFn" style="width:120px">确 定</el-button>
       </span>
     </el-dialog>
@@ -64,9 +63,6 @@ export default {
     },
   },
   methods: {
-    cls() {
-      this.dialog_key.keys = false;
-    },
     addInfoFn() {
       if (
         this.form.title === "" &&
@@ -79,7 +75,7 @@ export default {
         });
         return;
       }
-      this.dialog_key.keys = false;
+      this.dialog_key.keys1 = false;
       let infoData = {
         categoryId: this.form.region,
         title: this.form.title,
